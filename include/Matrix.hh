@@ -18,7 +18,7 @@ public:
 
     }
 
-    F &operator[](int i) {
+    inline F &operator[](int i) {
         return data_[row_idx_ + rows_ * i];
     }
 
@@ -28,6 +28,8 @@ private:
     int columns_;
     F *data_;
 };
+
+// This is column major order
 
 template<class F>
 class Matrix {
@@ -44,7 +46,7 @@ public:
         delete[] data;
     }
 
-    Matrix multiply(const Matrix &rhs) {
+    inline Matrix multiply(const Matrix &rhs) {
 
         assert(columns_ == rhs.rows_);
 
@@ -65,8 +67,31 @@ public:
         return Matrix(rows_, rhs.columns_, Zero, result);
     }
 
-    IndexObject<F> operator[](int i) {
+    inline IndexObject<F> operator[](int i) {
         return IndexObject(i, rows_, columns_, data);
+    }
+
+    inline void swapRows(int r1, int r2) {
+        for(int i = 0; i < columns_; i++){
+            auto tmp = this->operator[](r1)[i];
+            this->operator[](r1)[i] = this->operator[](r2)[i];
+            this->operator[](r2)[i] = tmp;
+        }
+    }
+
+    inline Matrix<F> augment(const Matrix<F>& vector) {
+        assert(vector.columns_ == 1 && rows_ == vector.rows_);
+        //int rows = rows_;
+        //int columns = columns_ + 1;
+        F* result = new F[rows_ * (columns_ + 1)];
+        for (int i = 0; i < rows_; i++) {
+            for (int j = 0; j < columns_; j++) {
+                result[i + j * rows_] = this->data[i * j * rows_];
+            }
+            result[i + columns_ * rows_] = vector.data[i];
+        }
+
+        return Matrix<F>(rows_, columns_, Zero, result);
     }
 
 private:
@@ -75,6 +100,5 @@ private:
     const F Zero;
     F *data;
 };
-
 
 #endif //ALGEBRA_MATRIX_HH
