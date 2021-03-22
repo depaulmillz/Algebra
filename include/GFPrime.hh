@@ -34,7 +34,7 @@ public:
         }
     }
 
-    friend GFPrimeElement<Prime>;
+    friend class GFPrimeElement<Prime>;
 
 private:
     unsigned *log_;
