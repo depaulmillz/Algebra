@@ -22,12 +22,12 @@ public:
 
     }
 
-    void initLogTable(unsigned generator) {
+    inline void initLogTable(unsigned generator) {
         // log of 1 is 0
         log_[1] = 0;
         ilog_[0] = 1;
         unsigned val = generator;
-        for(int i = 1; i < Prime - 1; i++){
+        for (int i = 1; i < Prime - 1; i++) {
             log_[val] = i;
             ilog_[i] = val;
             val = val * val;
@@ -44,7 +44,12 @@ private:
 template<unsigned Prime>
 class GFPrimeElement {
 public:
-    GFPrimeElement() : elm(0) {
+
+    GFPrimeElement() {
+
+    }
+
+    explicit GFPrimeElement(GFPrimeMetadata<Prime> m) : elm(0), metadata(m) {
 
     }
 
@@ -56,19 +61,31 @@ public:
 
     }
 
-    inline explicit operator unsigned() {
+    inline explicit operator unsigned() const {
         return elm;
     }
 
-    inline GFPrimeElement<Prime> operator+(const GFPrimeElement<Prime> &rhs) {
+    inline GFPrimeElement<Prime> operator+(const GFPrimeElement<Prime> &rhs) const {
         return GFPrimeElement<Prime>((elm + rhs.elm) % Prime, metadata);
     }
 
-    inline GFPrimeElement<Prime> operator-(const GFPrimeElement<Prime> &rhs) {
+    inline GFPrimeElement<Prime> &operator+=(const GFPrimeElement<Prime> &rhs) {
+        elm = (elm + rhs.elm) % Prime;
+        return *this;
+    }
+
+
+    inline GFPrimeElement<Prime> operator-(const GFPrimeElement<Prime> &rhs) const {
         return GFPrimeElement<Prime>((elm - rhs.elm) % Prime, metadata);
     }
 
-    inline GFPrimeElement<Prime> operator*(const GFPrimeElement<Prime> &rhs) {
+    inline GFPrimeElement<Prime> &operator-=(const GFPrimeElement<Prime> &rhs) {
+        elm = (elm - rhs.elm) % Prime;
+        return *this;
+    }
+
+
+    inline GFPrimeElement<Prime> operator*(const GFPrimeElement<Prime> &rhs) const {
         unsigned m = elm * rhs.elm;
         if (m < Prime) {
             return GFPrimeElement<Prime>(m, metadata);
@@ -76,20 +93,29 @@ public:
         return GFPrimeElement<Prime>(m % Prime, metadata);
     }
 
-    inline GFPrimeElement<Prime> multWithLogTable(const GFPrimeElement<Prime> &rhs) {
+    inline GFPrimeElement<Prime> &operator*=(const GFPrimeElement<Prime> &rhs) {
+        unsigned m = elm * rhs.elm;
+        elm = m;
+        if (m >= Prime) {
+            elm = elm % Prime;
+        }
+        return *this;
+    }
+
+    inline GFPrimeElement<Prime> multWithLogTable(const GFPrimeElement<Prime> &rhs) const {
         // generator ^ logrhs * generator ^ thislog = generator ^ (logrhs + thislog)
         unsigned logrhs = metadata.log_[rhs.elm];
         unsigned thislog = metadata.log_[elm];
         return GFPrimeElement<Prime>(metadata.ilog_[logrhs + thislog], metadata);
     }
 
-    inline GFPrimeElement<Prime> operator/(const GFPrimeElement<Prime> &rhs) {
+    inline GFPrimeElement<Prime> operator/(const GFPrimeElement<Prime> &rhs) const {
         // generator ^ logrhs = rhs.elm;
         // generator ^ (Prime - 1) = 1;
         // generator ^ (Prime - 1 - logrhs) * generator ^ logrhs = generator ^ (Prime - 1);
         // ===> generator ^ (Prime - 1 - logrhs) is rhs.elm inverse
 
-        if(rhs.elm == 0) {
+        if (rhs.elm == 0) {
             throw std::runtime_error("Divide by 0");
         }
 
@@ -98,11 +124,11 @@ public:
         return (*this * inverse); // this can be done with lookup as well
     }
 
-    inline GFPrimeElement<Prime> log() {
+    inline GFPrimeElement<Prime> log() const {
         return GFPrimeElement<Prime>(metadata.log_[elm], metadata);
     }
 
-    inline bool operator==(GFPrimeElement<Prime>& rhs) {
+    inline bool operator==(GFPrimeElement<Prime> &rhs) const {
         return elm == rhs.elm;
     }
 

@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <unordered_set>
+#include <memory>
 
 class GF2To8Element;
 
@@ -21,10 +22,10 @@ public:
     }
 
     ~GF2To8Metadata() {
-
+        // todo implement ebr
     }
 
-    void initLogTable() {
+    inline void initLogTable() {
         const uint16_t PrimitivePolynomial = 0b100011101; // x^8 + x^4 + x^3 + x^2 + 1
 
         std::unordered_set<uint8_t> s;
@@ -69,12 +70,17 @@ public:
     friend class GF2To8Element;
 
 private:
-    unsigned *log_;
-    uint8_t *ilog_;
+    unsigned* log_;
+    uint8_t* ilog_;
 };
 
 class GF2To8Element {
 public:
+
+    GF2To8Element() {
+
+    }
+
     explicit GF2To8Element(GF2To8Metadata m) : polynomial(0), metadata(m) {
 
     }
@@ -91,15 +97,26 @@ public:
         return polynomial;
     }
 
-    inline GF2To8Element operator+(const GF2To8Element &rhs) {
+    inline GF2To8Element operator+(const GF2To8Element &rhs) const {
         return GF2To8Element(polynomial ^ rhs.polynomial, metadata);
     }
 
-    inline GF2To8Element operator-(const GF2To8Element &rhs) {
+    inline GF2To8Element& operator+=(const GF2To8Element &rhs) {
+        polynomial = polynomial ^ rhs.polynomial;
+        return *this;
+    }
+
+
+    inline GF2To8Element operator-(const GF2To8Element &rhs) const {
         return GF2To8Element(polynomial ^ rhs.polynomial, metadata);
     }
 
-    inline GF2To8Element operator*(const GF2To8Element &rhs) {
+    inline GF2To8Element& operator-=(const GF2To8Element &rhs) {
+        polynomial = polynomial ^ rhs.polynomial;
+        return *this;
+    }
+
+    inline GF2To8Element operator*(const GF2To8Element &rhs) const {
 
         if (this->polynomial == 0 || rhs.polynomial == 0) {
             return GF2To8Element(0, metadata);
@@ -114,7 +131,24 @@ public:
         return GF2To8Element(res, metadata);
     }
 
-    inline GF2To8Element operator/(const GF2To8Element &rhs) {
+    inline GF2To8Element& operator*=(const GF2To8Element &rhs) {
+
+        if (this->polynomial == 0 || rhs.polynomial == 0) {
+            polynomial = 0;
+            return *this;
+        }
+
+        // polynomial = x ^ log(polynomial)
+        // rhs.polynomial = x ^ log(rhs.polynomial)
+        // polynomial * rhs.polynomial = (x ^ log(polynomial)) * (x ^ log(rhs.polynomial))
+        // polynomial * rhs.polynomial = x ^ (log(polynomial) + log(rhs.polynomial))
+
+        polynomial = metadata.ilog_[(metadata.log_[polynomial] + metadata.log_[rhs.polynomial]) % 255];
+        return *this;
+    }
+
+
+    inline GF2To8Element operator/(const GF2To8Element &rhs) const {
 
         if (rhs.polynomial == 0) {
             throw std::runtime_error("Divide by 0");
